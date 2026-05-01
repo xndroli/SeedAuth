@@ -104,7 +104,7 @@ versions.unshift({
 });
 
 // Write updated versions.json
-writeFileSync(versionsFile, JSON.stringify(versions, null, 2) + "\n");
+writeFileSync(versionsFile, `${JSON.stringify(versions, null, 2)}\n`);
 console.log("✓ Updated versions.json");
 
 // Update versions.md

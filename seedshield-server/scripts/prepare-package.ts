@@ -53,7 +53,7 @@ const cleanedPackage = Object.fromEntries(
 );
 
 // Write the clean package.json to out/build
-writeFileSync(join(outDir, "package.json"), JSON.stringify(cleanedPackage, null, 2) + "\n");
+writeFileSync(join(outDir, "package.json"), `${JSON.stringify(cleanedPackage, null, 2)}\n`);
 
 // Copy README.md and LICENSE to out/build
 copyFileSync(join(rootDir, "README.md"), join(outDir, "README.md"));
