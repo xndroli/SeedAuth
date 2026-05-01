@@ -8,8 +8,10 @@ export interface AttestationObject {
   fmt: string;
   /** Base64-encoded FIDO2 attestation object */
   attestationObject: string;
-  /** Relying Party Identifier (Origin) */
+  /** Relying Party Identifier (Origin Domain) */
   rpId: string;
+  /** The challenge/nonce provided by the server to prevent replay */
+  challenge: string;
   /** Seeker Genesis Token metadata (optional for mock) */
   sgtMetadata?: string;
 }

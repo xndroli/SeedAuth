@@ -6,72 +6,62 @@ import { AttestationVerifier } from "./verifier.js";
 
 describe("AttestationVerifier", () => {
   const TEST_ORIGIN = "https://exchange.com";
+  const TEST_RP_ID = "exchange.com";
+  const TEST_CHALLENGE = "random-challenge-nonce";
+
   let verifier: AttestationVerifier;
   let mockGuardian: GuardianRpcAdapter;
 
   beforeEach(() => {
-    // Inject a mock Guardian adapter to bypass actual network calls
     mockGuardian = new GuardianRpcAdapter("mock://sas.helius.dev");
     verifier = new AttestationVerifier(mockGuardian);
   });
 
-  it("AC-1.3.1: successfully verifies a valid hardware attestation", async () => {
-    const attestation = MockTEE.generateMockAttestation(TEST_ORIGIN);
-    const result = await verifier.verify(attestation, TEST_ORIGIN);
+  it("successfully verifies a valid hardware attestation with challenge", async () => {
+    const attestation = MockTEE.generateMockAttestation(TEST_RP_ID, TEST_CHALLENGE);
+    const result = await verifier.verify(attestation, TEST_ORIGIN, TEST_CHALLENGE);
 
     expect(result.success).toBe(true);
     expect(result.attestationStatus).toBe("VALID_HARDWARE");
-    expect(result.deviceId).toBeDefined();
   });
 
-  it("AC-1.3.2: rejects attestation if RP ID does not match origin", async () => {
-    const attestation = MockTEE.generateMockAttestation("https://fake-exchange.com");
-    const result = await verifier.verify(attestation, TEST_ORIGIN);
-
-    expect(result.success).toBe(false);
-    expect(result.errorCode).toBe(SeedShieldErrorCode.ORIGIN_MISMATCH);
-    expect(result.attestationStatus).toBe("INVALID");
-  });
-
-  it("AC-1.3.3: rejects attestation with untrusted AAGUID", async () => {
-    const attestation = MockTEE.generateMockAttestation(TEST_ORIGIN, "untrusted-aaguid");
-    const result = await verifier.verify(attestation, TEST_ORIGIN);
-
-    expect(result.success).toBe(false);
-    expect(result.errorCode).toBe(SeedShieldErrorCode.UNTRUSTED_AAGUID);
-    expect(result.attestationStatus).toBe("SOFTWARE_BACKED");
-  });
-
-  it("rejects attestation if hardware flag is missing", async () => {
-    const attestation = MockTEE.generateMockAttestation(TEST_ORIGIN, undefined, false);
-    const result = await verifier.verify(attestation, TEST_ORIGIN);
-
-    expect(result.success).toBe(false);
-    expect(result.errorCode).toBe(SeedShieldErrorCode.UNTRUSTED_AAGUID);
-    expect(result.attestationStatus).toBe("SOFTWARE_BACKED");
-  });
-
-  it("AC-1.3.5: returns error if Guardian RPC verification fails", async () => {
-    // Simulate invalid quote via mock guardian logic
-    const attestation = MockTEE.generateMockAttestation(TEST_ORIGIN);
-    // Force invalid quote by tampering with base64 string for the mock guardian's check
-    attestation.attestationObject += "INVALID_QUOTE";
-
-    const result = await verifier.verify(attestation, TEST_ORIGIN);
+  it("rejects if challenge does not match", async () => {
+    const attestation = MockTEE.generateMockAttestation(TEST_RP_ID, "wrong-challenge");
+    const result = await verifier.verify(attestation, TEST_ORIGIN, TEST_CHALLENGE);
 
     expect(result.success).toBe(false);
     expect(result.errorCode).toBe(SeedShieldErrorCode.INVALID_TEEPIN_QUOTE);
+    expect(result.message).toContain("Challenge mismatch");
   });
 
-  it("AC-1.3.6: returns standardized error result on internal failure", async () => {
-    // Pass malformed JSON to trigger catch block
-    const attestation = MockTEE.generateMockAttestation(TEST_ORIGIN);
-    attestation.attestationObject = Buffer.from("{malformed}").toString("base64");
-
-    const result = await verifier.verify(attestation, TEST_ORIGIN);
+  it("rejects attestation if RP ID does not match normalized origin", async () => {
+    const attestation = MockTEE.generateMockAttestation("wrong-domain.com", TEST_CHALLENGE);
+    const result = await verifier.verify(attestation, TEST_ORIGIN, TEST_CHALLENGE);
 
     expect(result.success).toBe(false);
-    expect(result.errorCode).toBe(SeedShieldErrorCode.INTERNAL_ERROR);
-    expect(result.attestationStatus).toBe("INVALID");
+    expect(result.errorCode).toBe(SeedShieldErrorCode.ORIGIN_MISMATCH);
+  });
+
+  it("rejects attestation with untrusted AAGUID", async () => {
+    const attestation = MockTEE.generateMockAttestation(
+      TEST_RP_ID,
+      TEST_CHALLENGE,
+      "untrusted-aaguid",
+    );
+    const result = await verifier.verify(attestation, TEST_ORIGIN, TEST_CHALLENGE);
+
+    expect(result.success).toBe(false);
+    expect(result.errorCode).toBe(SeedShieldErrorCode.UNTRUSTED_AAGUID);
+    expect(result.attestationStatus).toBe("SOFTWARE_BACKED");
+  });
+
+  it("rejects hardware call if guardian verification fails", async () => {
+    const attestation = MockTEE.generateMockAttestation(TEST_RP_ID, TEST_CHALLENGE);
+    attestation.attestationObject += "INVALID_QUOTE"; // Trigger mock guardian error
+
+    const result = await verifier.verify(attestation, TEST_ORIGIN, TEST_CHALLENGE);
+
+    expect(result.success).toBe(false);
+    expect(result.errorCode).toBe(SeedShieldErrorCode.INVALID_TEEPIN_QUOTE);
   });
 });

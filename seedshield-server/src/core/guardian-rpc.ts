@@ -22,9 +22,7 @@ export class GuardianRpcAdapter {
     attestationObject: string,
     _sgtMetadata?: string,
   ): Promise<GuardianVerificationResponse> {
-    // In a real implementation, this would be a fetch call to the Guardian RPC.
-    // For Phase 1 and TDD, we simulate the network boundary.
-
+    // SECURITY FIX: Default to valid: false (Fail-Closed)
     if (this.endpoint.includes("mock")) {
       // Mock logic for tests
       if (attestationObject.includes("INVALID_QUOTE")) {
@@ -33,14 +31,9 @@ export class GuardianRpcAdapter {
       return { valid: true, deviceId: "seeker-device-123" };
     }
 
-    try {
-      // Simulation of the 2026 SAS API call
-      // const response = await fetch(`${this.endpoint}/v1/sas/verify`, { ... });
-
-      // For the sake of the story, we assume a successful verification if not mock
-      return { valid: true, deviceId: "seeker-device-real" };
-    } catch (_error) {
-      return { valid: false, error: "RPC_UNREACHABLE" };
-    }
+    // In production, this would be a real SAS RPC call
+    // For Phase 1, we simulate a successful call but ONLY if the endpoint is not mock
+    // In a real scenario, this would involve a cryptographic check on the SGT quote.
+    return { valid: false, error: SeedShieldErrorCode.INVALID_TEEPIN_QUOTE };
   }
 }
