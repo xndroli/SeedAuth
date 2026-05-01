@@ -1,0 +1,5 @@
+# BMAD Method
+_bmad/
+_bmad-output/
+.agents/
+.claude/

@@ -1,0 +1,35 @@
+# Taskfile configuration
+# Path: tasks/tools/eslint.yml
+
+version: "3"
+tasks:
+  eslint:check:
+    desc: Lint JSDoc comments
+    cmds:
+      - bun run eslint {{.SRC_TS_FILES}}
+    sources:
+      - "{{.SRC_TS_FILES}}"
+      - "{{.ESLINT_CONFIG}}"
+  eslint:fix:
+    desc: Fix JSDoc comments
+    cmds:
+      - bun run eslint {{.SRC_TS_FILES}} --fix
+    sources:
+      - "{{.SRC_TS_FILES}}"
+      - "{{.ESLINT_CONFIG}}"
+  eslint:check:watch:
+    desc: Lint JSDoc comments in watch mode
+    cmds:
+      - bun run eslint {{.SRC_TS_FILES}} --watch
+    sources:
+      - "{{.SRC_TS_FILES}}"
+      - "{{.ESLINT_CONFIG}}"
+    watch: true
+  eslint:fix:watch:
+    desc: Fix JSDoc comments in watch mode
+    cmds:
+      - bun run eslint {{.SRC_TS_FILES}} --fix --watch
+    sources:
+      - "{{.SRC_TS_FILES}}"
+      - "{{.ESLINT_CONFIG}}"
+    watch: true

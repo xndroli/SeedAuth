@@ -1,0 +1,16 @@
+# Taskfile configuration
+# Path: tasks/logical/setup.yml
+
+version: "3"
+tasks:
+  setup:
+    desc: Set up the project
+    cmds:
+      - task: deps:install
+      - task: lefthook:install
+      # Create .scratch directory for local development
+      - cmd: mkdir -p .scratch
+      - task: typecheck
+      - task: build
+      - task: lint:check
+      - task: test:coverage

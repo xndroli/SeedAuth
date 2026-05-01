@@ -1,0 +1,21 @@
+# Taskfile configuration
+# Path: tasks/tools/tsc.yml
+
+version: "3"
+tasks:
+  tsc:check:
+    desc: Type check with TypeScript
+    cmds:
+      - bun run tsc --noEmit
+    sources:
+      - "{{.SRC_TS_FILES}}"
+      - "{{.SRC_TSX_FILES}}"
+      - "{{.TS_CONFIG}}"
+  tsc:check:watch:
+    desc: Type check in watch mode
+    cmds:
+      - bun run tsc --noEmit --watch
+    sources:
+      - "{{.SRC_TS_FILES}}"
+      - "{{.SRC_TSX_FILES}}"
+      - "{{.TS_CONFIG}}"

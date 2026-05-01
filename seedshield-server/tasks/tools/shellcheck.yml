@@ -1,0 +1,47 @@
+# Taskfile configuration
+# Path: tasks/tools/shellcheck.yml
+
+version: "3"
+
+tasks:
+  shellcheck:check:
+    desc: Check shell scripts with shellcheck
+    aliases:
+      - shellcheck
+    cmds:
+      - shellcheck --format=gcc **/*.sh
+    sources:
+      - "**/*.sh"
+      - ".shellcheckrc"
+
+  shellcheck:check:verbose:
+    desc: Check shell scripts with verbose output
+    aliases:
+      - shellcheck:verbose
+    cmds:
+      - shellcheck **/*.sh
+    sources:
+      - "**/*.sh"
+      - ".shellcheckrc"
+
+  shellcheck:check:watch:
+    desc: Check shell scripts in watch mode
+    aliases:
+      - shellcheck:watch
+    cmds:
+      - task: shellcheck:check
+    sources:
+      - "**/*.sh"
+      - ".shellcheckrc"
+    watch: true
+
+  shellcheck:check:verbose:watch:
+    desc: Check shell scripts in watch mode with verbose output
+    aliases:
+      - shellcheck:verbose:watch
+    cmds:
+      - task: shellcheck:check:verbose
+    sources:
+      - "**/*.sh"
+      - ".shellcheckrc"
+    watch: true
