@@ -22,6 +22,7 @@ enum class AttestationStatus {
 
 enum class SeedShieldErrorCode {
     INVALID_TEEPIN_QUOTE,
+    CHALLENGE_MISMATCH,
     ORIGIN_MISMATCH,
     UNTRUSTED_AAGUID,
     VERSION_DEPRECATED,
@@ -35,5 +36,6 @@ data class VerificationResult(
     val message: String? = null,
     val attestationStatus: AttestationStatus,
     val timestamp: String,
-    val deviceId: String? = null
+    val deviceId: String? = null,
+    val unverifiedDeviceId: String? = null
 )

@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { decode } from "cbor-x";
 import { describe, expect, it } from "vitest";
 import { SOLANA_SEED_VAULT_AAGUID } from "../constants.js";
 import { MockTEE } from "./mock-tee.js";
@@ -12,23 +13,23 @@ describe("MockTEE", () => {
     expect(attestation.attestationObject).toBeDefined();
     expect(typeof attestation.attestationObject).toBe("string");
 
-    // Verify base64 decodeable
-    const decoded = JSON.parse(Buffer.from(attestation.attestationObject, "base64").toString());
-    expect(decoded.counter).toBe(1);
+    // Verify binary decodeable (CBOR)
+    const decoded = decode(Buffer.from(attestation.attestationObject, "base64"));
+    expect(decoded.signCount).toBe(1);
   });
 
   it("AC-1.2.2: embeds the provided RP ID (SHA-256 hash)", () => {
     const attestation = MockTEE.generateMockAttestation(TEST_RP_ID, TEST_CHALLENGE);
     expect(attestation.rpId).toBe(TEST_RP_ID);
 
-    const expectedHash = createHash("sha256").update(TEST_RP_ID).digest("base64");
-    const decoded = JSON.parse(Buffer.from(attestation.attestationObject, "base64").toString());
-    expect(decoded.rpIdHash).toBe(expectedHash);
+    const expectedHash = createHash("sha256").update(TEST_RP_ID).digest();
+    const decoded = decode(Buffer.from(attestation.attestationObject, "base64"));
+    expect(Buffer.from(decoded.rpIdHash).toString("hex")).toBe(expectedHash.toString("hex"));
   });
 
   it("AC-1.2.3: includes the test AAGUID", () => {
     const attestation = MockTEE.generateMockAttestation(TEST_RP_ID, TEST_CHALLENGE);
-    const decoded = JSON.parse(Buffer.from(attestation.attestationObject, "base64").toString());
+    const decoded = decode(Buffer.from(attestation.attestationObject, "base64"));
     expect(decoded.aaguid).toBe(SOLANA_SEED_VAULT_AAGUID);
   });
 
@@ -40,7 +41,7 @@ describe("MockTEE", () => {
       undefined,
       true,
     );
-    const hwDecoded = JSON.parse(Buffer.from(hwAttestation.attestationObject, "base64").toString());
+    const hwDecoded = decode(Buffer.from(hwAttestation.attestationObject, "base64"));
     expect(hwDecoded.flags).toBe(0x41); // UP + AT
     expect(hwAttestation.sgtMetadata).toBeDefined();
     expect(hwAttestation.fmt).toBe("android-safetynet");
@@ -52,7 +53,7 @@ describe("MockTEE", () => {
       undefined,
       false,
     );
-    const swDecoded = JSON.parse(Buffer.from(swAttestation.attestationObject, "base64").toString());
+    const swDecoded = decode(Buffer.from(swAttestation.attestationObject, "base64"));
     expect(swDecoded.flags).toBe(0x01); // UP only
     expect(swAttestation.sgtMetadata).toBeUndefined();
     expect(swAttestation.fmt).toBe("none");

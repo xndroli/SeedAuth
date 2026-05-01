@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { decode } from "cbor-x";
 import { AUTH_DATA_FLAGS, SOLANA_SEED_VAULT_AAGUID } from "../../core/constants.js";
 import { GuardianRpcAdapter } from "../../core/guardian-rpc.js";
 import {
@@ -27,45 +28,58 @@ export class AttestationVerifier {
     expectedChallenge: string,
   ): Promise<VerificationResult> {
     const timestamp = new Date().toISOString();
+    let unverifiedDeviceId: string | undefined;
 
     try {
       // 1. Origin Normalization (Standard Compliance)
       const originUrl = new URL(origin);
       const rpId = originUrl.hostname;
 
-      // 2. Challenge Verification (Anti-Replay)
+      // 2. Proactive Binary Decoding for Forensic Tracking (AC-1.4.3)
+      // SECURITY FIX: Now using proper CBOR decoding
+      try {
+        const authData = decode(Buffer.from(attestation.attestationObject, "base64"));
+        unverifiedDeviceId = authData.deviceId;
+      } catch (_e) {
+        // Continue to validation; unverifiedDeviceId remains undefined
+      }
+
+      // 3. Challenge Verification (Anti-Replay)
       if (attestation.challenge !== expectedChallenge) {
         return this.createErrorResult(
-          SeedShieldErrorCode.INVALID_TEEPIN_QUOTE,
+          SeedShieldErrorCode.CHALLENGE_MISMATCH,
           "Challenge mismatch / Replay attempt detected",
           timestamp,
+          unverifiedDeviceId,
         );
       }
 
-      // 3. Basic Origin Binding Check (FR8)
+      // 4. Basic Origin Binding Check (FR8)
       if (attestation.rpId !== rpId) {
         return this.createErrorResult(
           SeedShieldErrorCode.ORIGIN_MISMATCH,
           "Origin mismatch",
           timestamp,
+          unverifiedDeviceId,
         );
       }
 
-      // 4. Decode and Parse AuthData
-      // Note: Real FIDO2 uses CBOR. In Phase 1 we use Base64 wrapped simulation.
-      const authData = JSON.parse(Buffer.from(attestation.attestationObject, "base64").toString());
+      // 5. Binary Validation
+      const authData = decode(Buffer.from(attestation.attestationObject, "base64"));
 
-      // 5. Cryptographic Origin Binding Check (FR8)
+      // 6. Cryptographic Origin Binding Check (FR8)
       const expectedRpIdHash = createHash("sha256").update(rpId).digest("base64");
-      if (authData.rpIdHash !== expectedRpIdHash) {
+      const actualRpIdHash = Buffer.from(authData.rpIdHash).toString("base64");
+      if (actualRpIdHash !== expectedRpIdHash) {
         return this.createErrorResult(
           SeedShieldErrorCode.ORIGIN_MISMATCH,
           "Cryptographic RP ID mismatch",
           timestamp,
+          unverifiedDeviceId,
         );
       }
 
-      // 6. AAGUID Enforcement (FR7)
+      // 7. AAGUID Enforcement (FR7)
       if (authData.aaguid !== SOLANA_SEED_VAULT_AAGUID) {
         return this.createResult(
           false,
@@ -73,10 +87,12 @@ export class AttestationVerifier {
           timestamp,
           SeedShieldErrorCode.UNTRUSTED_AAGUID,
           "Hardware tier not trusted",
+          undefined,
+          unverifiedDeviceId,
         );
       }
 
-      // 7. Hardware Attestation Flag Check (bit 6 of flags)
+      // 8. Hardware Attestation Flag Check (bit 6 of flags)
       const isHardwareAttested = (authData.flags & AUTH_DATA_FLAGS.AT) !== 0;
       if (!isHardwareAttested) {
         return this.createResult(
@@ -85,40 +101,54 @@ export class AttestationVerifier {
           timestamp,
           SeedShieldErrorCode.UNTRUSTED_AAGUID,
           "Attestation flag missing",
+          undefined,
+          unverifiedDeviceId,
         );
       }
 
-      // 8. Guardian RPC Verification (SGT Quote Integrity)
+      // 9. Guardian RPC Verification (SGT Quote Integrity)
       const guardianResponse = await this.guardianRpc.verifySgtQuote(
         attestation.attestationObject,
         attestation.sgtMetadata,
       );
 
       if (!guardianResponse.valid) {
+        // SECURITY FIX: Sanitize upstream errors to prevent leakage
+        const sanitizedError = this.mapGuardianError(guardianResponse.error);
         return this.createErrorResult(
-          (guardianResponse.error as SeedShieldErrorCode) ||
-            SeedShieldErrorCode.INVALID_TEEPIN_QUOTE,
+          sanitizedError,
           "Guardian verification failed",
           timestamp,
+          unverifiedDeviceId,
         );
       }
 
-      // 9. Success!
+      // 10. Success! (Verified Identity)
       return this.createResult(
         true,
         "VALID_HARDWARE",
         timestamp,
         undefined,
         undefined,
-        guardianResponse.deviceId,
+        guardianResponse.deviceId || unverifiedDeviceId,
       );
     } catch (_error) {
       return this.createErrorResult(
         SeedShieldErrorCode.INTERNAL_ERROR,
         "Failed to process attestation",
         timestamp,
+        unverifiedDeviceId,
       );
     }
+  }
+
+  private mapGuardianError(error?: string): SeedShieldErrorCode {
+    // SECURITY FIX: Allow-list of valid error codes
+    const validCodes = Object.values(SeedShieldErrorCode);
+    if (error && (validCodes as string[]).includes(error)) {
+      return error as SeedShieldErrorCode;
+    }
+    return SeedShieldErrorCode.INVALID_TEEPIN_QUOTE;
   }
 
   private createResult(
@@ -128,6 +158,7 @@ export class AttestationVerifier {
     errorCode?: SeedShieldErrorCode,
     message?: string,
     deviceId?: string,
+    unverifiedDeviceId?: string,
   ): VerificationResult {
     return {
       success,
@@ -136,6 +167,7 @@ export class AttestationVerifier {
       errorCode,
       message,
       deviceId,
+      unverifiedDeviceId,
     };
   }
 
@@ -143,7 +175,16 @@ export class AttestationVerifier {
     errorCode: SeedShieldErrorCode,
     message: string,
     timestamp: string,
+    unverifiedDeviceId?: string,
   ): VerificationResult {
-    return this.createResult(false, "INVALID", timestamp, errorCode, message);
+    return this.createResult(
+      false,
+      "INVALID",
+      timestamp,
+      errorCode,
+      message,
+      undefined,
+      unverifiedDeviceId,
+    );
   }
 }

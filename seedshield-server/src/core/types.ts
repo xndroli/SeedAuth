@@ -22,13 +22,17 @@ export interface VerificationResult {
   message?: string;
   attestationStatus: AttestationStatus;
   timestamp: string;
+  /** Cryptographically verified device ID */
   deviceId?: string;
+  /** Extracted but NOT YET verified device ID (Forensic use only) */
+  unverifiedDeviceId?: string;
 }
 
 export type AttestationStatus = "VALID_HARDWARE" | "SOFTWARE_BACKED" | "INVALID" | "REVOKED";
 
 export enum SeedShieldErrorCode {
   INVALID_TEEPIN_QUOTE = "INVALID_TEEPIN_QUOTE",
+  CHALLENGE_MISMATCH = "CHALLENGE_MISMATCH",
   ORIGIN_MISMATCH = "ORIGIN_MISMATCH",
   UNTRUSTED_AAGUID = "UNTRUSTED_AAGUID",
   VERSION_DEPRECATED = "VERSION_DEPRECATED",
