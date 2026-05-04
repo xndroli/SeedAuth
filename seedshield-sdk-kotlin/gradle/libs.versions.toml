@@ -12,10 +12,13 @@ core_ktx = "1.17.0"
 detekt = "1.23.8"
 espresso_core = "3.7.0"
 junit = "4.13.2"
-kotlin = "2.3.21"
+kotlin = "2.1.0"
 min_sdk_version = "23"
 nexus_publish = "2.0.0"
 target_sdk_version = "36"
+androidx_credentials = "1.5.0"
+kotlinx_serialization = "1.7.3"
+mockito = "5.14.2"
 
 [libraries]
 junit = { module = "junit:junit", version.ref = "junit" }
@@ -38,8 +41,13 @@ detekt_formatting = { module = "io.gitlab.arturbosch.detekt:detekt-formatting", 
 espresso_core = { module = "androidx.test.espresso:espresso-core", version.ref = "espresso_core" }
 agp = { module = "com.android.tools.build:gradle", version.ref = "agp" }
 kgp = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
+androidx_credentials = { module = "androidx.credentials:credentials", version.ref = "androidx_credentials" }
+androidx_credentials_play_services = { module = "androidx.credentials:credentials-play-services-auth", version.ref = "androidx_credentials" }
+kotlinx_serialization_json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx_serialization" }
+mockito_core = { module = "org.mockito:mockito-core", version.ref = "mockito" }
 
 [plugins]
 detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }
 compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 nexus-publish = { id = "io.github.gradle-nexus.publish-plugin", version.ref = "nexus_publish" }
+kotlin_serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }

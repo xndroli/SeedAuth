@@ -7,6 +7,7 @@ plugins {
     kotlin("android")
     id("maven-publish")
     publish
+    alias(libs.plugins.kotlin.serialization)
 }
 
 android {
@@ -58,8 +59,12 @@ tasks.withType<KotlinCompile>().configureEach {
 dependencies {
     implementation(libs.androidx.appcompat)
     implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.credentials)
+    implementation(libs.androidx.credentials.play.services)
+    implementation(libs.kotlinx.serialization.json)
 
     testImplementation(libs.junit)
+    testImplementation(libs.mockito.core)
 
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.androidx.test.ext.junit)
