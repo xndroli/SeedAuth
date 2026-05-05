@@ -28,6 +28,8 @@ export class MockTEE {
       signCount: 1,
       aaguid,
       deviceId,
+      // Mock credential public key (32 bytes for Ed25519)
+      credentialPublicKey: Buffer.alloc(32, 1), 
     };
 
     return {
