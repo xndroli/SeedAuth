@@ -29,6 +29,33 @@ describe("AttestationVerifier", () => {
     expect(result.timestamp).toBeDefined();
   });
 
+  it("rejects if challenge in clientDataJSON does not match", async () => {
+    const attestation = MockTEE.generateMockAttestation(TEST_RP_ID, TEST_CHALLENGE);
+    // Tamper with clientDataJSON but keep the outer challenge property
+    const clientData = JSON.parse(Buffer.from(attestation.clientDataJSON, "base64").toString());
+    clientData.challenge = "tampered-challenge";
+    attestation.clientDataJSON = Buffer.from(JSON.stringify(clientData)).toString("base64");
+
+    const result = await verifier.verify(attestation, TEST_ORIGIN, TEST_CHALLENGE);
+
+    expect(result.success).toBe(false);
+    expect(result.errorCode).toBe(SeedShieldErrorCode.CHALLENGE_MISMATCH);
+    expect(result.message).toContain("Cryptographic challenge mismatch");
+  });
+
+  it("rejects if origin in clientDataJSON does not match", async () => {
+    const attestation = MockTEE.generateMockAttestation(TEST_RP_ID, TEST_CHALLENGE);
+    const clientData = JSON.parse(Buffer.from(attestation.clientDataJSON, "base64").toString());
+    clientData.origin = "https://malicious.com";
+    attestation.clientDataJSON = Buffer.from(JSON.stringify(clientData)).toString("base64");
+
+    const result = await verifier.verify(attestation, TEST_ORIGIN, TEST_CHALLENGE);
+
+    expect(result.success).toBe(false);
+    expect(result.errorCode).toBe(SeedShieldErrorCode.ORIGIN_MISMATCH);
+    expect(result.message).toContain("Origin mismatch in clientDataJSON");
+  });
+
   it("AC-1.4.3: extracts unverifiedDeviceId even when challenge does not match", async () => {
     const attestation = MockTEE.generateMockAttestation(TEST_RP_ID, "wrong-challenge");
     const result = await verifier.verify(attestation, TEST_ORIGIN, TEST_CHALLENGE);

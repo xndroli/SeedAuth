@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { encode } from "cbor-x";
 import { SOLANA_SEED_VAULT_AAGUID } from "../constants.js";
 import type { AttestationObject } from "../types.js";
+import { Keypair } from "@solana/web3.js";
 
 export class MockTEE {
   /**
@@ -21,6 +22,10 @@ export class MockTEE {
   ): AttestationObject {
     const rpIdHash = createHash("sha256").update(rpId).digest();
 
+    // Use a stable public key derived from a known seed for testability
+    const mockSeed = Buffer.alloc(32, 1);
+    const mockKeyPair = Keypair.fromSeed(mockSeed);
+
     // Simulating FIDO2 authData binary structure using CBOR
     const mockAuthData = {
       rpIdHash,
@@ -28,14 +33,22 @@ export class MockTEE {
       signCount: 1,
       aaguid,
       deviceId,
-      // Mock credential public key (32 bytes for Ed25519)
-      credentialPublicKey: Buffer.alloc(32, 1), 
+      credentialPublicKey: mockKeyPair.publicKey.toBuffer(),
+    };
+    // Mock clientDataJSON (Base64 encoded JSON)
+    const clientData = {
+      type: "webauthn.create",
+      challenge: challenge,
+      origin: `https://${rpId}`,
+      crossOrigin: false,
     };
 
     return {
       fmt: isHardware ? "android-safetynet" : "none",
       attestationObject: encode(mockAuthData).toString("base64"),
+      clientDataJSON: Buffer.from(JSON.stringify(clientData)).toString("base64"),
       rpId: rpId,
+      aaguid: aaguid,
       challenge: challenge,
       sgtMetadata: isHardware ? "seeker-genesis-token-v1-mock" : undefined,
     };

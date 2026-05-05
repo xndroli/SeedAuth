@@ -32,13 +32,34 @@ enum class AttestationStatus {
 
 @Serializable
 enum class SeedShieldErrorCode {
-    INVALID_TEEPIN_QUOTE,
+    CERTIFICATE_EXPIRED,
+    CERTIFICATE_REVOKED,
     CHALLENGE_MISMATCH,
+    DEVICE_COMPROMISED_ANOMALY,
+    DEVICE_TAMPERED,
+    DUPLICATE_DEVICE_ID,
+    ENCLAVE_BUSY,
+    ENCLAVE_UNAVAILABLE,
+    FEE_PAYER_EXHAUSTED,
+    GUARDIAN_RPC_FAILED,
+    INTERNAL_ERROR,
+    INVALID_TEEPIN_QUOTE,
+    INVALID_VAULT_PDA,
+    KEY_NOT_FOUND,
+    MULTISIG_ALREADY_EXECUTED,
+    MULTISIG_ALREADY_EXISTS,
+    MULTISIG_INSUFFICIENT_SIGNERS,
+    MULTISIG_THRESHOLD_DEADLOCK,
+    MULTISIG_THRESHOLD_NOT_MET,
+    MULTISIG_TIMELOCK_ACTIVE,
+    NON_SEEKER_DEVICE,
     ORIGIN_MISMATCH,
+    SOFTWARE_ATTESTATION_REJECTED,
+    THROTTLE_LIMIT_EXCEEDED,
     UNTRUSTED_AAGUID,
-    VERSION_DEPRECATED,
     USER_VERIFICATION_FAILED,
-    INTERNAL_ERROR
+    VERSION_DEPRECATED,
+    ZERO_AAGUID
 }
 
 @Serializable
@@ -50,6 +71,20 @@ data class VerificationResult(
     val timestamp: String,
     val deviceId: String? = null,
     val unverifiedDeviceId: String? = null
+)
+
+/**
+ * Sealed-Error Pattern: Audit-ready error payload with structural metadata.
+ */
+@Serializable
+data class SealedError(
+    val code: SeedShieldErrorCode,
+    val message: String,
+    val timestamp: String,
+    val deviceId: String? = null,
+    val attestationStatus: AttestationStatus,
+    /** Cryptographic proof or signature of the error payload (for forensic use) */
+    val proof: String? = null
 )
 
 /**

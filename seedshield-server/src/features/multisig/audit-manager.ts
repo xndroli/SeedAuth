@@ -1,6 +1,6 @@
 import { Connection, PublicKey } from "@solana/web3.js";
 import { CONFIG } from "../../core/config.js";
-import { SeedShieldErrorCode } from "../../core/types.js";
+import { SeedShieldErrorCode, type SealedError } from "../../core/types.js";
 
 /**
  * Unique on-chain audit artifact types.
@@ -104,6 +104,21 @@ export class AuditManager {
         message: "Failed to fetch on-chain audit trail",
       };
     }
+  }
+
+  /**
+   * Logs a subsidized transaction rejection for forensic auditing (FR10).
+   * In a production environment, this would write to a write-only log stream or a secure enclave audit log.
+   * For Phase 1, we log the SealedError payload to the secure console.
+   */
+  public logRejection(error: SealedError): void {
+    const forensicPayload = {
+      event: "SUBSIDIZER_REJECTION",
+      ...error,
+    };
+    
+    // FR10: Ensure errorCode, timestamp, deviceId, and attestationStatus are included
+    console.warn("[FORENSIC-AUDIT]", JSON.stringify(forensicPayload));
   }
 
   /**

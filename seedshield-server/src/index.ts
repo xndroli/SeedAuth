@@ -5,3 +5,4 @@ export * from "./features/attestation/verifier.js";
 export * from "./features/multisig/squads-manager.js";
 export * from "./features/multisig/registration-handler.js";
 export * from "./features/multisig/audit-manager.js";
+export * from "./features/subsidizer/subsidizer.js";

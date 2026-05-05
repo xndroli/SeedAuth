@@ -45,10 +45,50 @@ export class AttestationVerifier {
       }
 
       // 3. Challenge Verification (Anti-Replay)
+      // SECURITY FIX: Verify challenge against both property and clientDataJSON (WebAuthn Standard)
       if (attestation.challenge !== expectedChallenge) {
         return this.createErrorResult(
           SeedShieldErrorCode.CHALLENGE_MISMATCH,
           "Challenge mismatch / Replay attempt detected",
+          timestamp,
+          unverifiedDeviceId,
+        );
+      }
+
+      try {
+        const clientData = JSON.parse(Buffer.from(attestation.clientDataJSON, "base64").toString("utf-8"));
+        
+        if (clientData.challenge !== expectedChallenge) {
+          return this.createErrorResult(
+            SeedShieldErrorCode.CHALLENGE_MISMATCH,
+            "Cryptographic challenge mismatch in clientDataJSON",
+            timestamp,
+            unverifiedDeviceId,
+          );
+        }
+
+        if (clientData.origin !== origin) {
+           return this.createErrorResult(
+             SeedShieldErrorCode.ORIGIN_MISMATCH,
+             "Origin mismatch in clientDataJSON",
+             timestamp,
+             unverifiedDeviceId,
+           );
+        }
+
+        // Standard WebAuthn type for registration is 'webauthn.create'
+        if (clientData.type !== "webauthn.create" && clientData.type !== "webauthn.get") {
+           return this.createErrorResult(
+             SeedShieldErrorCode.INTERNAL_ERROR,
+             "Invalid WebAuthn type in clientDataJSON",
+             timestamp,
+             unverifiedDeviceId,
+           );
+        }
+      } catch (_e) {
+        return this.createErrorResult(
+          SeedShieldErrorCode.INTERNAL_ERROR,
+          "Failed to parse or validate clientDataJSON",
           timestamp,
           unverifiedDeviceId,
         );
