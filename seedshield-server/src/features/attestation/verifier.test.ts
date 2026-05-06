@@ -107,4 +107,26 @@ describe("AttestationVerifier", () => {
     expect(result.errorCode).toBe(SeedShieldErrorCode.ORIGIN_MISMATCH);
     expect(result.unverifiedDeviceId).toBe(MOCK_DEVICE_ID);
   });
+
+  it("AC-4.3.7: rejects stale attestations (Challenge Expiry)", async () => {
+    const staleTime = Date.now() - (20 * 60 * 1000); // 20 minutes ago
+    const staleChallenge = `${staleTime}:expired-nonce`;
+    const attestation = MockTEE.generateMockAttestation(TEST_RP_ID, staleChallenge);
+    
+    const result = await verifier.verify(attestation, TEST_ORIGIN, staleChallenge);
+
+    expect(result.success).toBe(false);
+    expect(result.errorCode).toBe(SeedShieldErrorCode.CHALLENGE_EXPIRED);
+    expect(result.message).toContain("Challenge has expired");
+  });
+
+  it("accepts challenges within the 15-minute window", async () => {
+    const freshTime = Date.now() - (5 * 60 * 1000); // 5 minutes ago
+    const freshChallenge = `${freshTime}:valid-nonce`;
+    const attestation = MockTEE.generateMockAttestation(TEST_RP_ID, freshChallenge);
+    
+    const result = await verifier.verify(attestation, TEST_ORIGIN, freshChallenge);
+
+    expect(result.success).toBe(true);
+  });
 });

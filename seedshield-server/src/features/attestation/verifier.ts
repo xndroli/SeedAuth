@@ -46,6 +46,22 @@ export class AttestationVerifier {
 
       // 3. Challenge Verification (Anti-Replay)
       // SECURITY FIX: Verify challenge against both property and clientDataJSON (WebAuthn Standard)
+      // AC-4.3.7: Implement 15-minute challenge expiry check
+      const [challengeTs] = expectedChallenge.split(":");
+      if (challengeTs) {
+        const ts = parseInt(challengeTs, 10);
+        const now = Date.now();
+        const fifteenMinutes = 15 * 60 * 1000;
+        if (now - ts > fifteenMinutes) {
+          return this.createErrorResult(
+            SeedShieldErrorCode.CHALLENGE_EXPIRED,
+            "Challenge has expired (15-minute window)",
+            timestamp,
+            unverifiedDeviceId,
+          );
+        }
+      }
+
       if (attestation.challenge !== expectedChallenge) {
         return this.createErrorResult(
           SeedShieldErrorCode.CHALLENGE_MISMATCH,

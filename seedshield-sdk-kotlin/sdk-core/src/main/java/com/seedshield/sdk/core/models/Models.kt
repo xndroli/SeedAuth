@@ -34,6 +34,7 @@ enum class AttestationStatus {
 enum class SeedShieldErrorCode {
     CERTIFICATE_EXPIRED,
     CERTIFICATE_REVOKED,
+    CHALLENGE_EXPIRED,
     CHALLENGE_MISMATCH,
     DEVICE_COMPROMISED_ANOMALY,
     DEVICE_TAMPERED,
