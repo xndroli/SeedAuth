@@ -49,6 +49,37 @@ export const CONFIG = {
   RECOVERY_TIMELOCK_SECONDS: 259200,
 
   /**
+   * Minimum balance (in SOL) required for a fee payer to be considered available.
+   */
+  MIN_FEE_PAYER_BALANCE_SOL: 0.05,
+
+  /**
+   * Maximum number of subsidized transactions per device per 24h window.
+   */
+  MAX_SUBSIDIZED_TX_PER_DEVICE: 5,
+
+  /**
+   * Authorized Program IDs that the subsidizer is allowed to sign for.
+   * By default, only the Squads v4 program and System Program are authorized.
+   */
+  AUTHORIZED_PROGRAM_IDS: [
+    "SQDS4ep65T869zMMBKyuUq6aD6EgTu8psMjkvj52pCf", // Squads v4
+    "11111111111111111111111111111111", // System Program
+  ],
+
+  /**
+   * Minimum SDK version required for all hardware-attested requests.
+   * Requests with version < this will be rejected with VERSION_DEPRECATED.
+   */
+  MIN_CLIENT_VERSION: process.env.MIN_CLIENT_VERSION || "0.1.0",
+
+  /**
+   * Authorized Relying Party ID (Domain).
+   * Used to prevent origin spoofing.
+   */
+  RP_ID: process.env.RP_ID || "exchange.com",
+
+  /**
    * Returns the Keypair for the fee payer.
    * Throws if no secret is configured.
    */

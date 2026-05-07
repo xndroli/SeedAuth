@@ -70,6 +70,7 @@ describe("InstitutionalGuardianProxy", () => {
   const guardianKeypair = Keypair.generate();
   const multisigPda = new PublicKey("11111111111111111111111111111111");
   const challenge = `${Date.now()}:challenge`;
+  const CURRENT_VERSION = "0.1.0";
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -115,7 +116,7 @@ describe("InstitutionalGuardianProxy", () => {
     vi.spyOn((proxy as any).verifier, "verify").mockResolvedValue({
         success: true,
         attestationStatus: "VALID_HARDWARE",
-        timestamp: new Date().toISOString(),
+        timestamp: Date.now(),
         deviceId: mockKeyPair.publicKey.toBase58(),
     });
 
@@ -132,7 +133,8 @@ describe("InstitutionalGuardianProxy", () => {
       attestation,
       txBase64,
       guardianKeypair,
-      challenge
+      challenge,
+      CURRENT_VERSION
     );
 
     expect(result).toBe("vote-sig");
@@ -156,11 +158,11 @@ describe("InstitutionalGuardianProxy", () => {
     vi.spyOn((proxy as any).verifier, "verify").mockResolvedValue({
         success: true,
         attestationStatus: "VALID_HARDWARE",
-        timestamp: new Date().toISOString(),
+        timestamp: Date.now(),
         deviceId: "some-other-key",
     });
 
-    await expect(proxy.approveRotation(multisigPda, attestation, txBase64, guardianKeypair, challenge))
+    await expect(proxy.approveRotation(multisigPda, attestation, txBase64, guardianKeypair, challenge, CURRENT_VERSION))
       .rejects.toThrow(SeedShieldErrorCode.DEVICE_COMPROMISED_ANOMALY);
   });
 
@@ -169,7 +171,7 @@ describe("InstitutionalGuardianProxy", () => {
     const staleChallenge = `${staleTime}:expired`;
     const attestation = MockTEE.generateMockAttestation("exchange.com", staleChallenge);
     
-    await expect(proxy.approveRotation(multisigPda, attestation, "any-tx", guardianKeypair, staleChallenge))
+    await expect(proxy.approveRotation(multisigPda, attestation, "any-tx", guardianKeypair, staleChallenge, CURRENT_VERSION))
       .rejects.toThrow(SeedShieldErrorCode.CHALLENGE_EXPIRED);
   });
 });

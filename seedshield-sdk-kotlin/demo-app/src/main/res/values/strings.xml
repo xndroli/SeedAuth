@@ -1,10 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Kotlin Android Template</string>
-    <string name="title">This is just a template</string>
-    <string name="description">You can compute a factorial using the library-kotlin module. The result will be also shown in a notification using the library-android module.</string>
-    <string name="factorial_hint">Insert a number to compute his factorial</string>
-    <string name="compute">Compute</string>
-    <string name="notification_title">The Result is: %s</string>
-    <string name="please_enter_a_number">Please Enter a Number</string>
-    <string name="compose_version">In Compose</string>
+    <string name="app_name">SeedShield Exchange Demo</string>
+    <string name="title">SeedShield Exchange</string>
+    <string name="description">Experience silicon-rooted security. SMS recovery is disabled for your protection.</string>
+    <string name="btn_register">Register Securely (Hardware)</string>
+    <string name="btn_login">Login with Biometrics</string>
+    <string name="btn_recovery">Initiate Recovery</string>
+    <string name="btn_migrate">Migrate from SMS (Upgrade)</string>
+    <string name="sms_recovery_disabled">SMS Recovery Disabled: Protected by SeedShield Silicon Identity</string>
+    <string name="status_ready">Ready for Secure Authentication</string>
+    <string name="status_verifying">Verifying Hardware Attestation...</string>
+    <string name="status_success">Authentication Successful</string>
+    <string name="status_error">Security Error: %s</string>
+    <string name="multisig_pda_label">Identity Multisig (Squads v4): %s</string>
+    <string name="user_id_hint">Enter User ID</string>
 </resources>

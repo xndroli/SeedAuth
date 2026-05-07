@@ -28,7 +28,7 @@ export class RegistrationHandler {
       return {
         success: false,
         attestationStatus: "INVALID",
-        timestamp: new Date().toISOString(),
+        timestamp: Date.now(),
         errorCode: SeedShieldErrorCode.INTERNAL_ERROR,
         message: "Malformed attestation: missing attestationObject",
       };

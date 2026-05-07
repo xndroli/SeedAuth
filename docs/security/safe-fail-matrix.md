@@ -23,15 +23,16 @@ This document maps all identified failure modes across the hardware and on-chain
 
 | Failure Mode | Action | Error Code | Description |
 | :--- | :--- | :--- | :--- |
-| **Multisig Already Exists** | `LOG_ONLY` (Return Existing) | `MULTISIG_ALREADY_EXISTS` | Attempted to deploy a multisig for a public key that already has one. |
-| **Threshold Not Met** | `HARD_REJECT` | `MULTISIG_THRESHOLD_NOT_MET` | Fewer than 2 valid signatures for a 2-of-2 multisig rotation. |
-| **Threshold Deadlock** | `HARD_REJECT` | `MULTISIG_THRESHOLD_DEADLOCK` | Threshold configuration makes the account unrecoverable. |
-| **Timelock Active** | `HARD_REJECT` | `MULTISIG_TIMELOCK_ACTIVE` | Attempted to execute a rotation before the 72h timelock expired. |
-| **Already Executed** | `HARD_REJECT` | `MULTISIG_ALREADY_EXECUTED` | Transaction proposal has already been executed. |
-| **Insufficient Signers** | `HARD_REJECT` | `MULTISIG_INSUFFICIENT_SIGNERS` | Transaction proposal lacks enough signatures. |
-| **Fee Payer Exhausted** | `RETRY` (Secondary Payer) | `FEE_PAYER_EXHAUSTED` | Primary subsidizer account has insufficient funds. |
-| **Invalid Vault PDA** | `HARD_REJECT` | `INVALID_VAULT_PDA` | Derived Vault PDA address does not match expected configuration. |
-| **Guardian RPC Failure** | `RETRY` (Secondary Fallback) | `GUARDIAN_RPC_FAILED` | TEEPIN/SGT quote verification via Guardian RPC failed. |
+| **MULTISIG_ALREADY_EXISTS** | `LOG_ONLY` (Return Existing) | `MULTISIG_ALREADY_EXISTS` | Attempted to deploy a multisig for a public key that already has one. |
+| **MULTISIG_THRESHOLD_NOT_MET** | `HARD_REJECT` | `MULTISIG_THRESHOLD_NOT_MET` | Fewer than 2 valid signatures for a 2-of-2 multisig rotation. |
+| **MULTISIG_THRESHOLD_DEADLOCK** | `HARD_REJECT` | `MULTISIG_THRESHOLD_DEADLOCK` | Threshold configuration makes the account unrecoverable. |
+| **MULTISIG_TIMELOCK_ACTIVE** | `HARD_REJECT` | `MULTISIG_TIMELOCK_ACTIVE` | Attempted to execute a rotation before the 72h timelock expired. |
+| **MULTISIG_ALREADY_EXECUTED** | `HARD_REJECT` | `MULTISIG_ALREADY_EXECUTED` | Transaction proposal has already been executed. |
+| **MULTISIG_INSUFFICIENT_SIGNERS** | `HARD_REJECT` | `MULTISIG_INSUFFICIENT_SIGNERS` | Transaction proposal lacks enough signatures. |
+| **MULTISIG_CONFIGURATION_INVALID** | `HARD_REJECT` | `MULTISIG_CONFIGURATION_INVALID` | Multisig settings (e.g. timelock) do not meet security requirements. |
+| **FEE_PAYER_EXHAUSTED** | `RETRY` (Secondary Payer) | `FEE_PAYER_EXHAUSTED` | Primary subsidizer account has insufficient funds. |
+| **INVALID_VAULT_PDA** | `HARD_REJECT` | `INVALID_VAULT_PDA` | Derived Vault PDA address does not match expected configuration. |
+| **GUARDIAN_RPC_FAILED** | `RETRY` (Secondary Fallback) | `GUARDIAN_RPC_FAILED` | TEEPIN/SGT quote verification via Guardian RPC failed. |
 
 ## 3. Subsidizer & Fee Payer Failure Modes
 
@@ -51,7 +52,7 @@ This document maps all identified failure modes across the hardware and on-chain
 | **Zero AAGUID** | `HARD_REJECT` | `ZERO_AAGUID` | Generic authenticator attempting to spoof a hardware-bound device. |
 | **Duplicate Device ID Registration** | `HARD_REJECT` | `DUPLICATE_DEVICE_ID` | Multiple user accounts attempting to bind to the same physical `device_id`. |
 
-## 4. Enforcement Strategy (FR7)
+## 5. Enforcement Strategy (FR7)
 
 As per **Functional Requirement 7**, the system enforces a strict "Hardware-Only" policy.
 1. Any verification that returns `success: false` or `attestationStatus: SOFTWARE_BACKED` MUST result in a `HARD_REJECT`.

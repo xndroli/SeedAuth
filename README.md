@@ -1,4 +1,4 @@
-# SeedShield
+# SeedAuth
 
 **Hardware-Attested Anti-SIM-Swap Login & Recovery for Crypto Apps**
 
@@ -15,7 +15,7 @@
 
 ## Overview
 
-**SeedShield** brings SIM-swap-proof authentication and account recovery to every crypto application running on the **Solana Seeker** smartphone. By replacing SMS-based 2FA with a **passkey** that is generated, stored, and attested inside the device’s **Seed Vault** (hardware-backed secure element), SeedShield eliminates the #1 attack vector responsible for billions in user losses.
+**SeedAuth** brings SIM-swap-proof authentication and account recovery to every crypto application running on the **Solana Seeker** smartphone. By replacing SMS-based 2FA with a **passkey** that is generated, stored, and attested inside the device’s **Seed Vault** (hardware-backed secure element), SeedAuth eliminates the #1 attack vector responsible for billions in user losses.
 
 The SDK is designed as a lightweight, drop-in library that integrates into any Solana dApp, custodial exchange app, or mobile wallet. It leverages **Squads v4 multisigs** to establish a sovereign identity for every user, ensuring that even if a device is lost, recovery is hardware-attested and immune to social engineering.
 
@@ -40,9 +40,9 @@ SMS-based 2FA and recovery codes are the weakest link in crypto account security
 
 ---
 
-## The Solution — SeedShield
+## The Solution — SeedAuth
 
-SeedShield turns every Solana Seeker into a **FIDO2 authenticator** with **hardware attestation** tied to the device’s Seed Vault.
+SeedAuth turns every Solana Seeker into a **FIDO2 authenticator** with **hardware attestation** tied to the device’s Seed Vault.
 
 - **Private keys** never leave the secure hardware (TEE / Secure Element).  
 - **Hardware Attestation** proves the key origin is a genuine Solana Seeker.
@@ -54,13 +54,13 @@ SeedShield turns every Solana Seeker into a **FIDO2 authenticator** with **hardw
 ## How It Works (High Level)
 
 1. **Registration (Create Passkey)**
-   - App calls `SeedShield.register(userId)`.
+   - App calls `SeedAuth.register(userId)`.
    - Solana Seeker’s Seed Vault generates a **non-syncable** asymmetric key pair.  
    - Hardware attestation (SGT) is created, binding the public key to the device silicon.
    - The backend verifies the attestation and deploys a **siloed 1-of-2 Squads v4 multisig** (User Key + Institutional Guardian).
 
 2. **Authentication (Login)**
-   - App calls `SeedShield.authenticate(challenge)`.
+   - App calls `SeedAuth.authenticate(challenge)`.
    - User verifies identity via biometrics inside the TEE.
    - Hardware-attested signature is sent to the backend, which verifies it against the stored public key.
 
@@ -86,8 +86,8 @@ SeedShield turns every Solana Seeker into a **FIDO2 authenticator** with **hardw
 ## Project Status & Roadmap
 
 ### Phase 1: MVP – The Wedge (Current)
-- [ ] `@seedshield/client`: Kotlin SDK for Solana Seeker.
-- [ ] `@seedshield/server`: Node.js library for attestation verification.
+- [ ] `@SeedAuth/client`: Kotlin SDK for Solana Seeker.
+- [ ] `@SeedAuth/server`: Node.js library for attestation verification.
 - [ ] Squads Recovery Module: Siloed 1-of-2 multisig deployment.
 
 ### Phase 2: Growth – The Anti-SIM-Swap Stack
@@ -95,19 +95,19 @@ SeedShield turns every Solana Seeker into a **FIDO2 authenticator** with **hardw
 - [ ] Platform Plugins: One-click wrappers for Privy, Dynamic, and Magic.
 
 ### Phase 3: Vision – The Identity Passport
-- [ ] SeedShield ID: Open protocol for enterprise hardware-bound identity.
+- [ ] SeedAuth ID: Open protocol for enterprise hardware-bound identity.
 
 ---
 
 ## Repository Structure
 
 ```
-SeedShield/
-├── seedshield-sdk-kotlin/   # Kotlin SDK for Solana Seeker (Android)
+SeedAuth/
+├── SeedAuth-sdk-kotlin/   # Kotlin SDK for Solana Seeker (Android)
 │   ├── sdk-core/           # Headless SDK Logic (Pure Kotlin)
 │   ├── sdk-compose/        # Jetpack Compose UI Wrappers
 │   └── demo-app/           # Exchange Clone PoC
-└── seedshield-server/       # Node.js Verifier & Recovery Manager
+└── SeedAuth-server/       # Node.js Verifier & Recovery Manager
     └── src/features/
         ├── attestation/     # SGT/TEEPIN Verification
         ├── multisig/        # Squads v4 Integration
@@ -121,14 +121,14 @@ SeedShield/
 ### Mobile (Kotlin)
 Add to your `build.gradle.kts`:
 ```kotlin
-implementation("com.seedshield:sdk-core:1.0.0")
+implementation("com.SeedAuth:sdk-core:1.0.0")
 ```
 
 ### Server (Node.js)
 ```bash
-npm install @seedshield/server
+npm install @SeedAuth/server
 # or
-bun add @seedshield/server
+bun add @SeedAuth/server
 ```
 
 ---
@@ -137,7 +137,7 @@ bun add @seedshield/server
 
 ### Client (Kotlin)
 ```kotlin
-val shield = SeedShield.initialize(context)
+val shield = SeedAuth.initialize(context)
 val result = shield.register(rpId = "exchange.com", userId = "user_123")
 if (result.isHardwareAttested) {
     sendToServer(result.attestationObject)
@@ -146,7 +146,7 @@ if (result.isHardwareAttested) {
 
 ### Server (Node.js / TypeScript)
 ```typescript
-import { verifyAttestation } from '@seedshield/server';
+import { verifyAttestation } from '@SeedAuth/server';
 
 const outcome = await verifyAttestation(req.body.attestation, "https://exchange.com");
 

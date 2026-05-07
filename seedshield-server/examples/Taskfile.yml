@@ -7,10 +7,14 @@ includes:
   basic:
     dir: ./basic
     taskfile: ./basic/Taskfile.yml
+  exchange-demo:
+    dir: ./exchange-demo
+    taskfile: ./exchange-demo/Taskfile.yml
 
 tasks:
   typecheck:
     deps:
       - task: basic:typecheck
       - task: advanced:typecheck
+      - task: exchange-demo:typecheck
     desc: Typecheck examples

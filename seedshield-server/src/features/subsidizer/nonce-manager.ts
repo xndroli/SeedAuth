@@ -108,9 +108,15 @@ export class NonceManager {
 
   /**
    * Heuristic to check if instruction data corresponds to nonceAdvance.
+   * SECURITY: This is a fragile check. In production, use a formal 
+   * instruction decoder for the System Program.
    */
   private isNonceAdvance(data: Buffer): boolean {
+    if (data.length < 4) return false;
+    
     // SystemProgram nonceAdvance is index 4 in the instruction enum
-    return data.readUInt32LE(0) === 4;
+    // Reference: https://github.com/solana-labs/solana-web3.js/blob/master/src/system-program.ts
+    const instructionIndex = data.readUInt32LE(0);
+    return instructionIndex === 4;
   }
 }

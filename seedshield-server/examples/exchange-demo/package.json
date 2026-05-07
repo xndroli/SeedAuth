@@ -1,0 +1,15 @@
+{
+  "name": "example-exchange-demo",
+  "private": true,
+  "type": "module",
+  "version": "0.1.0",
+  "dependencies": {
+    "@seedshield/server": "workspace:*",
+    "express": "^4.21.2",
+    "cbor-x": "^1.6.0"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^22.10.2"
+  }
+}

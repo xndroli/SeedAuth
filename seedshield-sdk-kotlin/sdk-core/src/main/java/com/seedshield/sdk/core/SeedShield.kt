@@ -12,7 +12,7 @@ class SeedShield private constructor(
     private val testMode: Boolean = false,
     private val simulateUvFailure: Boolean = false
 ) {
-    private val registrationManager = RegistrationManager(activity, testMode, simulateUvFailure)
+    private val registrationManager = RegistrationManager(testMode, simulateUvFailure)
 
     /**
      * Triggers the hardware-bound passkey generation flow.
@@ -23,7 +23,7 @@ class SeedShield private constructor(
         challenge: String
     ): Result<AttestationResult> {
         return runCatching {
-            registrationManager.register(rpId, userId, challenge)
+            registrationManager.register(activity, rpId, userId, challenge)
         }
     }
 

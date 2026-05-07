@@ -190,6 +190,7 @@ class RegistrationManager(
             AttestationObject(
                 fmt = "packed", // Default for Seed Vault
                 attestationObject = attestationObjectBase64,
+                clientDataJSON = clientDataJSONBase64,
                 rpId = rpId,
                 challenge = challenge,
                 aaguid = aaguid,

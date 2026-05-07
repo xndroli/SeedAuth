@@ -25,7 +25,8 @@ export interface VerificationResult {
   errorCode?: SeedShieldErrorCode;
   message?: string;
   attestationStatus: AttestationStatus;
-  timestamp: string;
+  /** Epoch milliseconds */
+  timestamp: number;
   /** Cryptographically verified device ID */
   deviceId?: string;
   /** Extracted but NOT YET verified device ID (Forensic use only) */
@@ -38,7 +39,8 @@ export interface VerificationResult {
 export interface SealedError {
   code: SeedShieldErrorCode;
   message: string;
-  timestamp: string;
+  /** Epoch milliseconds */
+  timestamp: number;
   deviceId?: string;
   attestationStatus: AttestationStatus;
   /** Cryptographic proof or signature of the error payload (for forensic use) */
@@ -60,11 +62,13 @@ export enum SeedShieldErrorCode {
   FEE_PAYER_EXHAUSTED = "FEE_PAYER_EXHAUSTED",
   GUARDIAN_RPC_FAILED = "GUARDIAN_RPC_FAILED",
   INTERNAL_ERROR = "INTERNAL_ERROR",
+  INVALID_INPUT = "INVALID_INPUT",
   INVALID_TEEPIN_QUOTE = "INVALID_TEEPIN_QUOTE",
   INVALID_VAULT_PDA = "INVALID_VAULT_PDA",
   KEY_NOT_FOUND = "KEY_NOT_FOUND",
   MULTISIG_ALREADY_EXECUTED = "MULTISIG_ALREADY_EXECUTED",
   MULTISIG_ALREADY_EXISTS = "MULTISIG_ALREADY_EXISTS",
+  MULTISIG_CONFIGURATION_INVALID = "MULTISIG_CONFIGURATION_INVALID",
   MULTISIG_INSUFFICIENT_SIGNERS = "MULTISIG_INSUFFICIENT_SIGNERS",
   MULTISIG_THRESHOLD_DEADLOCK = "MULTISIG_THRESHOLD_DEADLOCK",
   MULTISIG_THRESHOLD_NOT_MET = "MULTISIG_THRESHOLD_NOT_MET",
@@ -77,4 +81,23 @@ export enum SeedShieldErrorCode {
   USER_VERIFICATION_FAILED = "USER_VERIFICATION_FAILED",
   VERSION_DEPRECATED = "VERSION_DEPRECATED",
   ZERO_AAGUID = "ZERO_AAGUID",
+}
+
+/**
+ * Audit Event Types for forensic categorization and on-chain tracking.
+ */
+export enum AuditEventType {
+  // On-chain Success Events
+  REGISTRATION = "REGISTRATION",
+  ROTATION = "ROTATION",
+  
+  // Rejection Events
+  SUBSIDIZER_REJECTION = "SUBSIDIZER_REJECTION",
+  GUARDIAN_REJECTION = "GUARDIAN_REJECTION",
+  THROTTLE_REJECTION = "THROTTLE_REJECTION",
+  VERSION_REJECTION = "VERSION_REJECTION",
+  
+  // Generic/Error
+  INTERNAL_ERROR = "INTERNAL_ERROR",
+  UNKNOWN = "UNKNOWN",
 }

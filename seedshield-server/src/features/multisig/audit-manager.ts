@@ -1,15 +1,6 @@
 import { Connection, PublicKey } from "@solana/web3.js";
 import { CONFIG } from "../../core/config.js";
-import { SeedShieldErrorCode, type SealedError } from "../../core/types.js";
-
-/**
- * Unique on-chain audit artifact types.
- */
-export enum AuditEventType {
-  REGISTRATION = "REGISTRATION",
-  ROTATION = "ROTATION",
-  UNKNOWN = "UNKNOWN",
-}
+import { SeedShieldErrorCode, type SealedError, AuditEventType } from "../../core/types.js";
 
 /**
  * Shape of a single audit trail event as per AC-3.2.3.
@@ -109,18 +100,25 @@ export class AuditManager {
   /**
    * Logs a subsidized transaction rejection for forensic auditing (FR10).
    * In a production environment, this would write to a write-only log stream or a secure enclave audit log.
-   * For Phase 1, we log the SealedError payload to the secure console.
+   * SECURITY: console.warn is used for Phase 1 but is marked for redirection.
    */
-  public logRejection(error: SealedError): void {
+  public logRejection(error: SealedError, event: AuditEventType = AuditEventType.SUBSIDIZER_REJECTION): void {
     const forensicPayload = {
-      event: "SUBSIDIZER_REJECTION",
-      ...error,
+      event,
+      timestamp: error.timestamp,
+      errorCode: error.code,
+      deviceId: error.deviceId,
+      attestationStatus: error.attestationStatus,
+      message: error.message,
+      // FR10: Ensure errorCode, timestamp, deviceId, and attestationStatus are included
+      metadata: {
+        raw: JSON.stringify(error),
+      }
     };
-    
-    // FR10: Ensure errorCode, timestamp, deviceId, and attestationStatus are included
-    console.warn("[FORENSIC-AUDIT]", JSON.stringify(forensicPayload));
-  }
 
+    // Structured output for easy redirection to SIEM/Audit systems
+    console.warn("[FORENSIC-AUDIT-JSON]", JSON.stringify(forensicPayload));
+  }
   /**
    * Identifies the type of multisig event from transaction data.
    * Compatible with Squads v4 transaction structures.

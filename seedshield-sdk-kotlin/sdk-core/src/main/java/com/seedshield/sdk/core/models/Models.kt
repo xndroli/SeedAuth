@@ -69,7 +69,8 @@ data class VerificationResult(
     val errorCode: SeedShieldErrorCode? = null,
     val message: String? = null,
     val attestationStatus: AttestationStatus,
-    val timestamp: String,
+    /** Epoch milliseconds */
+    val timestamp: Long,
     val deviceId: String? = null,
     val unverifiedDeviceId: String? = null
 )
@@ -81,7 +82,8 @@ data class VerificationResult(
 data class SealedError(
     val code: SeedShieldErrorCode,
     val message: String,
-    val timestamp: String,
+    /** Epoch milliseconds */
+    val timestamp: Long,
     val deviceId: String? = null,
     val attestationStatus: AttestationStatus,
     /** Cryptographic proof or signature of the error payload (for forensic use) */

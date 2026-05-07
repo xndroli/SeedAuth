@@ -39,7 +39,8 @@ export class TimelockMonitor {
       return Math.max(0, readyTime - now);
     } catch (error) {
       console.error("Failed to fetch timelock status:", error);
-      return 0;
+      // SECURITY FIX: Return MAX_SAFE_INTEGER on error to prevent premature execution (Finding 8)
+      return Number.MAX_SAFE_INTEGER;
     }
   }
 

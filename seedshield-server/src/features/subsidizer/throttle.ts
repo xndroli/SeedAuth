@@ -17,6 +17,7 @@ interface ThrottleEntry {
  */
 export class ThrottlePolicy {
   private readonly limits = new Map<string, ThrottleEntry>();
+  private lastCleanup = Date.now();
 
   constructor(
     private readonly maxTransactions: number = 5,
@@ -32,6 +33,10 @@ export class ThrottlePolicy {
    */
   public checkAndIncrement(deviceId: string): boolean {
     const now = Date.now();
+    
+    // Periodic cleanup to prevent memory leaks (Finding 12)
+    this.maybeCleanup(now);
+
     let entry = this.limits.get(deviceId);
 
     // Reset if window has passed or new device
@@ -53,5 +58,20 @@ export class ThrottlePolicy {
    */
   public reset(deviceId: string): void {
     this.limits.delete(deviceId);
+  }
+
+  /**
+   * Periodically removes expired entries from the map to prevent memory exhaustion.
+   */
+  private maybeCleanup(now: number): void {
+    const cleanupInterval = 10 * 60 * 1000; // Fixed 10-minute cleanup interval (Finding 12)
+    if (now - this.lastCleanup < cleanupInterval) return;
+
+    for (const [deviceId, entry] of this.limits.entries()) {
+      if (now - entry.lastReset > this.windowMs) {
+        this.limits.delete(deviceId);
+      }
+    }
+    this.lastCleanup = now;
   }
 }

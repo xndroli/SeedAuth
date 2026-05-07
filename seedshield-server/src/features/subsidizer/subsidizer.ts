@@ -1,4 +1,5 @@
 import { Connection, Keypair, Transaction, PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js";
+import { createHash } from "node:crypto";
 import { decode } from "cbor-x";
 import { AttestationVerifier } from "../attestation/verifier.js";
 import { ThrottlePolicy } from "./throttle.js";
@@ -9,7 +10,8 @@ import {
   SeedShieldErrorCode, 
   type VerificationResult,
   type SealedError,
-  type AttestationStatus
+  type AttestationStatus,
+  AuditEventType
 } from "../../core/types.js";
 import { CONFIG } from "../../core/config.js";
 
@@ -45,17 +47,19 @@ export class FeePayerSubsidizer {
    * @param attestation The hardware attestation object.
    * @param origin The expected RP origin.
    * @param challenge The challenge used for attestation.
+   * @param clientVersion The client SDK version (from X-SeedShield-Version header).
    */
   async requestSubsidizedSignature(
     transactionBase64: string,
     attestation: AttestationObject,
     origin: string,
-    challenge: string
+    challenge: string,
+    clientVersion?: string
   ): Promise<SubsidizedSignatureResult> {
-    const timestamp = new Date().toISOString();
+    const timestamp = Date.now();
 
-    // 1. Hardware Attestation Gating (AC-4.2.1, AC-4.2.5)
-    const verification = await this.verifier.verify(attestation, origin, challenge);
+    // 1. Hardware Attestation Gating (AC-4.2.1, AC-4.2.5, AC-5.3.1)
+    const verification = await this.verifier.verify(attestation, origin, challenge, clientVersion);
 
     if (!verification.success || verification.attestationStatus !== "VALID_HARDWARE") {
       const error = this.createSealedError(
@@ -65,7 +69,12 @@ export class FeePayerSubsidizer {
         verification.deviceId || verification.unverifiedDeviceId,
         verification.attestationStatus
       );
-      this.auditManager.logRejection(error);
+      
+      const eventType = error.code === SeedShieldErrorCode.VERSION_DEPRECATED 
+        ? AuditEventType.VERSION_REJECTION 
+        : AuditEventType.SUBSIDIZER_REJECTION;
+        
+      this.auditManager.logRejection(error, eventType);
       return { success: false, error };
     }
 
@@ -80,7 +89,7 @@ export class FeePayerSubsidizer {
         deviceId,
         verification.attestationStatus
       );
-      this.auditManager.logRejection(error);
+      this.auditManager.logRejection(error, AuditEventType.THROTTLE_REJECTION);
       return { success: false, error };
     }
 
@@ -88,7 +97,24 @@ export class FeePayerSubsidizer {
       // 3. Transaction Decoding & Validation (AC-4.2.3, AC-4.2.5)
       const transaction = Transaction.from(Buffer.from(transactionBase64, "base64"));
 
-      // 4. Signer-to-DeviceId Binding & Cryptographic Verification (AC-4.2.5 Security)
+      // 4. Instruction-set Validation (Security Hardening against Fund Drainage)
+      // SECURITY: Ensure all instructions are authorized.
+      const isAuthorized = transaction.instructions.every((ix) => 
+        CONFIG.AUTHORIZED_PROGRAM_IDS.includes(ix.programId.toBase58())
+      );
+      if (!isAuthorized) {
+        const error = this.createSealedError(
+          SeedShieldErrorCode.INTERNAL_ERROR,
+          "Transaction contains unauthorized instructions",
+          timestamp,
+          deviceId,
+          verification.attestationStatus
+        );
+        this.auditManager.logRejection(error, AuditEventType.SUBSIDIZER_REJECTION);
+        return { success: false, error };
+      }
+
+      // 5. Signer-to-DeviceId Binding & Cryptographic Verification (AC-4.2.5 Security)
       const userPublicKey = this.extractPublicKeyFromAttestation(attestation);
       if (!this.isSignerValid(transaction, userPublicKey)) {
          const error = this.createSealedError(
@@ -98,11 +124,11 @@ export class FeePayerSubsidizer {
              deviceId,
              verification.attestationStatus
          );
-         this.auditManager.logRejection(error);
+         this.auditManager.logRejection(error, AuditEventType.SUBSIDIZER_REJECTION);
          return { success: false, error };
       }
 
-      // 5. Durable Nonce Support Validation (AC-4.2.3)
+      // 6. Durable Nonce Support Validation (AC-4.2.3)
       const isValidNonce = await this.nonceManager.validateNonceUsage(transaction);
       if (!isValidNonce) {
         const error = this.createSealedError(
@@ -112,13 +138,11 @@ export class FeePayerSubsidizer {
           deviceId,
           verification.attestationStatus
         );
-        this.auditManager.logRejection(error);
+        this.auditManager.logRejection(error, AuditEventType.SUBSIDIZER_REJECTION);
         return { success: false, error };
       }
       
-      // 6. High Availability & Fallback (AC-4.2.4)
-      // SECURITY: We must sign using the fee payer specified in the transaction.
-      // If the transaction's fee payer is out of funds, we fail (we can't switch it without breaking signatures).
+      // 7. High Availability & Fallback (AC-4.2.4)
       const feePayer = await this.getAuthorizedFeePayer(transaction.feePayer);
       if (!feePayer) {
         const error = this.createSealedError(
@@ -128,11 +152,11 @@ export class FeePayerSubsidizer {
             deviceId,
             verification.attestationStatus
         );
-        this.auditManager.logRejection(error);
+        this.auditManager.logRejection(error, AuditEventType.SUBSIDIZER_REJECTION);
         return { success: false, error };
       }
 
-      // 7. Sign and return
+      // 8. Sign and return
       transaction.partialSign(feePayer);
 
       return {
@@ -159,7 +183,7 @@ export class FeePayerSubsidizer {
   private async getAuthorizedFeePayer(requestedFeePayer: PublicKey | undefined): Promise<Keypair | undefined> {
     if (!requestedFeePayer) return undefined;
 
-    const minBalance = 0.01 * LAMPORTS_PER_SOL; // 0.01 SOL minimum
+    const minBalance = CONFIG.MIN_FEE_PAYER_BALANCE_SOL * LAMPORTS_PER_SOL;
 
     let authorizedPair: Keypair | undefined;
 
@@ -177,6 +201,7 @@ export class FeePayerSubsidizer {
 
   /**
    * Extracts the public key from the FIDO2 attestation object.
+   * TODO: Implement proper COSE key decoding for full FIDO2 compliance.
    */
   private extractPublicKeyFromAttestation(attestation: AttestationObject): PublicKey {
     const authData = decode(Buffer.from(attestation.attestationObject, "base64"));
@@ -206,16 +231,22 @@ export class FeePayerSubsidizer {
   private createSealedError(
     code: SeedShieldErrorCode,
     message: string,
-    timestamp: string,
+    timestamp: number,
     deviceId: string | undefined,
     attestationStatus: AttestationStatus
   ): SealedError {
-    return {
+    const error: SealedError = {
       code,
       message,
       timestamp,
       deviceId,
       attestationStatus,
     };
+
+    // SECURITY: Generate a cryptographic proof (seal) for the error payload (Finding 8)
+    const proofData = JSON.stringify(error);
+    error.proof = createHash("sha256").update(proofData).digest("hex");
+
+    return error;
   }
 }

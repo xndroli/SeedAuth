@@ -14,6 +14,7 @@ describe("FeePayerSubsidizer", () => {
   const TEST_ORIGIN = "https://exchange.com";
   const TEST_RP_ID = "exchange.com";
   const TEST_CHALLENGE = "random-challenge-nonce";
+  const CURRENT_VERSION = "0.1.0";
   
   let subsidizer: FeePayerSubsidizer;
   let verifier: AttestationVerifier;
@@ -65,7 +66,8 @@ describe("FeePayerSubsidizer", () => {
       transaction.serialize({ verifySignatures: false }).toString("base64"),
       attestation,
       TEST_ORIGIN,
-      TEST_CHALLENGE
+      TEST_CHALLENGE,
+      CURRENT_VERSION
     );
 
     expect(result.success).toBe(true);
@@ -83,7 +85,8 @@ describe("FeePayerSubsidizer", () => {
       "base64tx",
       attestation,
       TEST_ORIGIN,
-      TEST_CHALLENGE
+      TEST_CHALLENGE,
+      CURRENT_VERSION
     );
 
     expect(result.success).toBe(false);
@@ -107,10 +110,10 @@ describe("FeePayerSubsidizer", () => {
 
     // Use up 5 limit
     for (let i = 0; i < 5; i++) {
-      await subsidizer.requestSubsidizedSignature(txBase64, attestation, TEST_ORIGIN, TEST_CHALLENGE);
+      await subsidizer.requestSubsidizedSignature(txBase64, attestation, TEST_ORIGIN, TEST_CHALLENGE, CURRENT_VERSION);
     }
 
-    const result = await subsidizer.requestSubsidizedSignature(txBase64, attestation, TEST_ORIGIN, TEST_CHALLENGE);
+    const result = await subsidizer.requestSubsidizedSignature(txBase64, attestation, TEST_ORIGIN, TEST_CHALLENGE, CURRENT_VERSION);
     expect(result.success).toBe(false);
     expect(result.error?.code).toBe(SeedShieldErrorCode.THROTTLE_LIMIT_EXCEEDED);
   });
@@ -133,8 +136,67 @@ describe("FeePayerSubsidizer", () => {
     
     const txBase64 = transaction.serialize({ verifySignatures: false }).toString("base64");
 
-    const result = await subsidizer.requestSubsidizedSignature(txBase64, attestation, TEST_ORIGIN, TEST_CHALLENGE);
+    const result = await subsidizer.requestSubsidizedSignature(txBase64, attestation, TEST_ORIGIN, TEST_CHALLENGE, CURRENT_VERSION);
     expect(result.success).toBe(false);
     expect(result.error?.code).toBe(SeedShieldErrorCode.USER_VERIFICATION_FAILED);
+  });
+
+  it("rejects unauthorized program instructions (Finding 11)", async () => {
+    const attestation = MockTEE.generateMockAttestation(TEST_RP_ID, TEST_CHALLENGE);
+    const userKeyPair = Keypair.generate();
+    
+    // Malicious program ID
+    const maliciousProgramId = new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"); // Token Program
+    const transaction = new Transaction().add({
+      keys: [{ pubkey: userKeyPair.publicKey, isSigner: true, isWritable: false }],
+      programId: maliciousProgramId,
+      data: Buffer.alloc(0),
+    });
+    transaction.recentBlockhash = "11111111111111111111111111111111";
+    transaction.feePayer = primaryFeePayer.publicKey;
+    transaction.partialSign(userKeyPair);
+
+    const txBase64 = transaction.serialize({ verifySignatures: false }).toString("base64");
+
+    const result = await subsidizer.requestSubsidizedSignature(
+      txBase64,
+      attestation,
+      TEST_ORIGIN,
+      TEST_CHALLENGE,
+      CURRENT_VERSION
+    );
+
+    expect(result.success).toBe(false);
+    expect(result.error?.code).toBe(SeedShieldErrorCode.INTERNAL_ERROR);
+    expect(result.error?.message).toContain("unauthorized instructions");
+  });
+
+  describe("SDK Version Deprecation (Story 5.3)", () => {
+    it("AC-5.3.1: rejects subsidized signature if SDK version is deprecated", async () => {
+      const attestation = MockTEE.generateMockAttestation(TEST_RP_ID, TEST_CHALLENGE);
+      const userKeyPair = Keypair.generate();
+      const transaction = new Transaction().add(
+        SystemProgram.transfer({
+          fromPubkey: userKeyPair.publicKey,
+          toPubkey: userKeyPair.publicKey,
+          lamports: 0,
+        })
+      );
+      transaction.recentBlockhash = "11111111111111111111111111111111";
+      transaction.feePayer = primaryFeePayer.publicKey;
+      transaction.partialSign(userKeyPair);
+      const txBase64 = transaction.serialize({ verifySignatures: false }).toString("base64");
+
+      const result = await subsidizer.requestSubsidizedSignature(
+        txBase64,
+        attestation,
+        TEST_ORIGIN,
+        TEST_CHALLENGE,
+        "0.0.9" // Deprecated version
+      );
+
+      expect(result.success).toBe(false);
+      expect(result.error?.code).toBe(SeedShieldErrorCode.VERSION_DEPRECATED);
+    });
   });
 });

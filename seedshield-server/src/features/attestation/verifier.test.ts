@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { GuardianRpcAdapter } from "../../core/guardian-rpc.js";
 import { MockTEE } from "../../core/test-utils/mock-tee.js";
 import { SeedShieldErrorCode } from "../../core/types.js";
@@ -10,6 +10,7 @@ describe("AttestationVerifier", () => {
   const TEST_CHALLENGE = "random-challenge-nonce";
   const MOCK_DEVICE_ID = "mock-device-id-999";
   const GUARDIAN_DEVICE_ID = "seeker-device-123";
+  const CURRENT_VERSION = "0.1.0";
 
   let verifier: AttestationVerifier;
   let mockGuardian: GuardianRpcAdapter;
@@ -21,7 +22,7 @@ describe("AttestationVerifier", () => {
 
   it("successfully verifies a valid hardware attestation with challenge and CBOR encoding", async () => {
     const attestation = MockTEE.generateMockAttestation(TEST_RP_ID, TEST_CHALLENGE);
-    const result = await verifier.verify(attestation, TEST_ORIGIN, TEST_CHALLENGE);
+    const result = await verifier.verify(attestation, TEST_ORIGIN, TEST_CHALLENGE, CURRENT_VERSION);
 
     expect(result.success).toBe(true);
     expect(result.attestationStatus).toBe("VALID_HARDWARE");
@@ -36,11 +37,50 @@ describe("AttestationVerifier", () => {
     clientData.challenge = "tampered-challenge";
     attestation.clientDataJSON = Buffer.from(JSON.stringify(clientData)).toString("base64");
 
-    const result = await verifier.verify(attestation, TEST_ORIGIN, TEST_CHALLENGE);
+    const result = await verifier.verify(attestation, TEST_ORIGIN, TEST_CHALLENGE, CURRENT_VERSION);
 
     expect(result.success).toBe(false);
     expect(result.errorCode).toBe(SeedShieldErrorCode.CHALLENGE_MISMATCH);
     expect(result.message).toContain("Cryptographic challenge mismatch");
+  });
+
+  describe("SDK Version Deprecation (Story 5.3)", () => {
+    const DEPRECATED_VERSION = "0.0.9";
+    const INVALID_VERSION = "not-a-version";
+
+    it("AC-5.3.2: allows requests from current SDK version", async () => {
+      const attestation = MockTEE.generateMockAttestation(TEST_RP_ID, TEST_CHALLENGE);
+      const result = await verifier.verify(attestation, TEST_ORIGIN, TEST_CHALLENGE, CURRENT_VERSION);
+
+      expect(result.success).toBe(true);
+    });
+
+    it("AC-5.3.2: rejects requests from deprecated SDK version", async () => {
+      const attestation = MockTEE.generateMockAttestation(TEST_RP_ID, TEST_CHALLENGE);
+      const result = await verifier.verify(attestation, TEST_ORIGIN, TEST_CHALLENGE, DEPRECATED_VERSION);
+
+      expect(result.success).toBe(false);
+      expect(result.errorCode).toBe(SeedShieldErrorCode.VERSION_DEPRECATED);
+      expect(result.message).toContain("deprecated");
+    });
+
+    it("AC-5.3.2: rejects requests with invalid version format", async () => {
+      const attestation = MockTEE.generateMockAttestation(TEST_RP_ID, TEST_CHALLENGE);
+      const result = await verifier.verify(attestation, TEST_ORIGIN, TEST_CHALLENGE, INVALID_VERSION);
+
+      expect(result.success).toBe(false);
+      expect(result.errorCode).toBe(SeedShieldErrorCode.INTERNAL_ERROR);
+      expect(result.message).toContain("Invalid client version format");
+    });
+
+    it("AC-5.3.4: rejects requests with missing version header", async () => {
+      const attestation = MockTEE.generateMockAttestation(TEST_RP_ID, TEST_CHALLENGE);
+      const result = await verifier.verify(attestation, TEST_ORIGIN, TEST_CHALLENGE, undefined);
+
+      expect(result.success).toBe(false);
+      expect(result.errorCode).toBe(SeedShieldErrorCode.VERSION_DEPRECATED);
+      expect(result.message).toContain("missing");
+    });
   });
 
   it("rejects if origin in clientDataJSON does not match", async () => {
@@ -49,7 +89,7 @@ describe("AttestationVerifier", () => {
     clientData.origin = "https://malicious.com";
     attestation.clientDataJSON = Buffer.from(JSON.stringify(clientData)).toString("base64");
 
-    const result = await verifier.verify(attestation, TEST_ORIGIN, TEST_CHALLENGE);
+    const result = await verifier.verify(attestation, TEST_ORIGIN, TEST_CHALLENGE, CURRENT_VERSION);
 
     expect(result.success).toBe(false);
     expect(result.errorCode).toBe(SeedShieldErrorCode.ORIGIN_MISMATCH);
@@ -58,7 +98,7 @@ describe("AttestationVerifier", () => {
 
   it("AC-1.4.3: extracts unverifiedDeviceId even when challenge does not match", async () => {
     const attestation = MockTEE.generateMockAttestation(TEST_RP_ID, "wrong-challenge");
-    const result = await verifier.verify(attestation, TEST_ORIGIN, TEST_CHALLENGE);
+    const result = await verifier.verify(attestation, TEST_ORIGIN, TEST_CHALLENGE, CURRENT_VERSION);
 
     expect(result.success).toBe(false);
     expect(result.errorCode).toBe(SeedShieldErrorCode.CHALLENGE_MISMATCH);
@@ -66,25 +106,12 @@ describe("AttestationVerifier", () => {
   });
 
   it("sanitizes upstream Guardian errors to prevent leakage", async () => {
-    // To test sanitization without breaking CBOR decoding:
-    // 1. Create a special "leaky" guardian adapter or use the mock logic
     mockGuardian = new GuardianRpcAdapter("mock://sas.helius.dev");
     verifier = new AttestationVerifier(mockGuardian);
 
     const attestation = MockTEE.generateMockAttestation(TEST_RP_ID, TEST_CHALLENGE);
-    // The MockGuardian logic in guardian-rpc.ts returns INVALID_TEEPIN_QUOTE if it sees "INVALID_QUOTE"
-    // We need to inject that into the attestationObject metadata or just use a specific mock trigger.
+    const result = await verifier.verify(attestation, TEST_ORIGIN, TEST_CHALLENGE, CURRENT_VERSION);
 
-    // Instead of tampering with the buffer (which breaks decoding),
-    // we use a deviceId that triggers a mock error in the adapter if we had that logic.
-    // For now, let's just verify the existing sanitization logic in the verifier.
-
-    // Pass an unknown error from the adapter (simulated)
-    const result = await verifier.verify(attestation, TEST_ORIGIN, TEST_CHALLENGE);
-    // (This path actually succeeds currently because MockTEE is valid).
-
-    // Let's add a test for the mapGuardianError specifically if needed,
-    // or just rely on the existing Verifier logic.
     expect(result.success).toBe(true);
   });
 
@@ -92,7 +119,7 @@ describe("AttestationVerifier", () => {
     const attestation = MockTEE.generateMockAttestation(TEST_RP_ID, TEST_CHALLENGE);
     attestation.attestationObject = Buffer.from("not-cbor").toString("base64");
 
-    const result = await verifier.verify(attestation, TEST_ORIGIN, TEST_CHALLENGE);
+    const result = await verifier.verify(attestation, TEST_ORIGIN, TEST_CHALLENGE, CURRENT_VERSION);
 
     expect(result.success).toBe(false);
     expect(result.errorCode).toBe(SeedShieldErrorCode.INTERNAL_ERROR);
@@ -101,7 +128,7 @@ describe("AttestationVerifier", () => {
 
   it("rejects attestation if RP ID does not match normalized origin", async () => {
     const attestation = MockTEE.generateMockAttestation("wrong-domain.com", TEST_CHALLENGE);
-    const result = await verifier.verify(attestation, TEST_ORIGIN, TEST_CHALLENGE);
+    const result = await verifier.verify(attestation, TEST_ORIGIN, TEST_CHALLENGE, CURRENT_VERSION);
 
     expect(result.success).toBe(false);
     expect(result.errorCode).toBe(SeedShieldErrorCode.ORIGIN_MISMATCH);
@@ -113,7 +140,7 @@ describe("AttestationVerifier", () => {
     const staleChallenge = `${staleTime}:expired-nonce`;
     const attestation = MockTEE.generateMockAttestation(TEST_RP_ID, staleChallenge);
     
-    const result = await verifier.verify(attestation, TEST_ORIGIN, staleChallenge);
+    const result = await verifier.verify(attestation, TEST_ORIGIN, staleChallenge, CURRENT_VERSION);
 
     expect(result.success).toBe(false);
     expect(result.errorCode).toBe(SeedShieldErrorCode.CHALLENGE_EXPIRED);
@@ -125,7 +152,7 @@ describe("AttestationVerifier", () => {
     const freshChallenge = `${freshTime}:valid-nonce`;
     const attestation = MockTEE.generateMockAttestation(TEST_RP_ID, freshChallenge);
     
-    const result = await verifier.verify(attestation, TEST_ORIGIN, freshChallenge);
+    const result = await verifier.verify(attestation, TEST_ORIGIN, freshChallenge, CURRENT_VERSION);
 
     expect(result.success).toBe(true);
   });

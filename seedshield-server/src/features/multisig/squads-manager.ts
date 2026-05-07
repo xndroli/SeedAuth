@@ -104,6 +104,7 @@ export class MultisigManager {
   /**
    * Finds an existing rotation proposal for the given new user key.
    * Returns the transaction PDA if found.
+   * SECURITY FIX: Filters for 'Active' status and validates all transaction actions (Finding 2, 7).
    */
   async findExistingRotationProposal(
     multisigPda: PublicKey,
@@ -112,8 +113,7 @@ export class MultisigManager {
     const connection = this.connection;
 
     // Search for ConfigTransaction accounts linked to this multisig
-    // We use memcmp to filter by multisigPda
-    // Note: In Squads v4, ConfigTransaction accounts store the multisig PDA.
+    // Note: In production, this should use an indexer or PDA-based lookup for performance (Finding 5).
     const configTransactions = await connection.getProgramAccounts(this.programId, {
       filters: [
         { dataSize: 224 }, // Size of ConfigTransaction account
@@ -130,14 +130,37 @@ export class MultisigManager {
       try {
         const configTx = multisig.accounts.ConfigTransaction.fromAccountInfo(account)[0];
         
-        // Check if any action is adding the newUserKey
-        const hasRotation = configTx.actions.some(
+        // SECURITY FIX: Filter for 'Active' proposals only (Finding 7)
+        // We need to fetch the Proposal account to check its status
+        const [proposalPda] = multisig.getProposalPda({
+            multisigPda,
+            transactionIndex: configTx.transactionIndex,
+            programId: this.programId,
+        });
+        
+        const proposal = await multisig.accounts.Proposal.fromAccountAddress(this.connection, proposalPda);
+        if (proposal.status.__kind !== "Active") {
+            continue;
+        }
+
+        // SECURITY FIX: Exhaustive action validation (Finding 2)
+        // We MUST ensure the proposal ONLY contains the expected rotation actions.
+        // A standard rotation should have exactly 2 actions: AddMember and RemoveMember.
+        if (configTx.actions.length !== 2) {
+            continue;
+        }
+
+        const hasAddMember = configTx.actions.some(
           (action: any) =>
             action.__kind === "AddMember" &&
             action.newMember.key.equals(newUserKey)
         );
 
-        if (hasRotation) {
+        const hasRemoveMember = configTx.actions.some(
+            (action: any) => action.__kind === "RemoveMember"
+        );
+
+        if (hasAddMember && hasRemoveMember) {
           return pubkey;
         }
       } catch (e) {
