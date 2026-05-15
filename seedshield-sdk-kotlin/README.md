@@ -1,4 +1,4 @@
-# SeedShield Kotlin SDK
+# SeedAuth Kotlin SDK
 
 Hardware-attested security for Solana Seeker.
 
@@ -8,4 +8,4 @@ Hardware-attested security for Solana Seeker.
 - `:demo-app`: Exchange Clone PoC.
 
 ## License
-MIT
+

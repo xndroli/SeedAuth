@@ -1,4 +1,4 @@
-# SeedShield Safe-Fail Matrix
+# SeedAuth Safe-Fail Matrix
 
 This document maps all identified failure modes across the hardware and on-chain boundaries to system actions and machine-readable error codes.
 

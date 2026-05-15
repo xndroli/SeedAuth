@@ -1,9 +1,9 @@
 {
-  "name": "@seedshield/server",
+  "name": "@seedauth/server",
   "version": "0.1.0",
   "description": "Hardware-attested anti-SIM-swap verifier for Solana Seeker",
-  "author": "roli",
-  "license": "MIT",
+  "author": "xndroli",
+  "license": "",
   "type": "module",
   "packageManager": "bun@1.3.2",
   "engines": {

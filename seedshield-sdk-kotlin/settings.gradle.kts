@@ -13,7 +13,7 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = ("seedshield-sdk-kotlin")
+rootProject.name = ("seedauth-sdk-kotlin")
 
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 
